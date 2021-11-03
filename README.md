@@ -5,10 +5,13 @@ Below are the brief descriptions of the files and their utilizations in the proj
 
 ### datautils.py:
 This file contains the Classes and methods that deal with below tasks
-  - Data extraction:
-    - Database.
-    - CSV file.
-    - API
-  - Data Cleaning:
+  - (class) DataOperator:
+    - Performs extraction of data from/to the below storages and also contains the getters and setters to access the private variables of the class.
+      - Database.
+      - CSV file.
+      - API
+  - (class) DataCleaner:
+    -  Fills the missing data (Imputation) and Treats the outlier values in the dataset (Winsorization)
+    -  Drops the columns that have large number of missing data percentage.
   - Feature Engineering on the dataset
   - Store the processed data into the Database again.
