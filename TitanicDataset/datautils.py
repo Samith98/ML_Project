@@ -8,6 +8,7 @@ class DataExtractor(object):
         Class extracts the data from the database, whose information is set in mypy.ini file
     """
     __data__ = None
+    __data_flag__ = bool
     __sql_server_info__ = None
     __user_info__ = None
     __data_source__ = None
@@ -27,6 +28,10 @@ class DataExtractor(object):
 
     def _data_init_(self) -> None:
         try:
+            if self.__data_source__["database"] and self.__data_source__["csv"]:
+                print("Choose only one data source in config.ini file")
+                self.set_data_flag(False)
+                return
             if self.__data_source__["database"]:
                 try:
                     if (self.__sql_server_info__["host"] is not None) and (self.__sql_server_info__["database"] is not None) \
@@ -37,18 +42,23 @@ class DataExtractor(object):
                             self.cur.execute("SELECT DATABASE()")
                             db = self.cur.fetchone()
                             print("Connected to: {0} Database".format(db[0]))
-                            return
+                            return self.set_data_flag(True)
                     else:
                         print("Value missing in the config.ini file for Database")
+                        self.set_data_flag(False)
+                        return 
                 except Error as e:
                     print(e)
             elif self.__data_source__["csv"]:
                 try:
                     if self.__csv_file__["path"] is not None:
                         self.__data__ = pd.read_csv(self.__csv_file__["path"])
-                        return
+                        self.set_data_flag(True)
+                        return 
                     else:
                         print("Path missing for the csv file in config.ini file")
+                        self.set_data_flag(False)
+                        return
                 except Exception as e:
                     print(e)
             else:
@@ -77,8 +87,7 @@ class DataExtractor(object):
         self.set_data(data=res_df)
         return res_df
     
-    def set_data(self, data: pd.DataFrame) -> None:
-        self.__data__ = data
-
-    def get_data(self) -> pd.DataFrame:
-        return self.__data__
+    def set_data(self, data: pd.DataFrame) -> None: self.__data__ = data
+    def get_data(self) -> pd.DataFrame: return self.__data__
+    def set_data_flag(self, val: bool) -> None: self.__data_flag__ = val
+    def get_data_flag(self) -> bool: return self.__data_flag__
