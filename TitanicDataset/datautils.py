@@ -1,7 +1,10 @@
 import pandas as pd
+import numpy as np
 from configparser import ConfigParser
 import mysql
 from mysql.connector import Error, connect
+
+import time
 
 class DataOperator:
     """
@@ -94,22 +97,6 @@ class DataOperator:
         self.set_data(data=res_df)
         return res_df
     
-    def push_data_to_db(self, data: pd.DataFrame, table_name: str) -> None:
-        try:
-            create_table = """
-                CREATE TABLE IF NOT EXISTS {0}(Attribute TEXT, Percentage float);
-            """.format(table_name)
-            self.cur.execute(create_table)
-            print("Table created")
-            for _, row in data.iterrows():
-                sql = """
-                    INSERT INTO {0}.{1} VALUES(%s, %s)
-                """.format(self.__sql_server_info__["database"], table_name)
-                self.cur.execute(sql, tuple(row))
-            self.conn.commit()
-        except Error as e:
-            print("Error while connecting to MySQL", e)
-
     # Getters and Setters of the private variables
     def set_data(self, data: pd.DataFrame) -> None: self.__data__ = data
     def get_data(self) -> pd.DataFrame: return self.__data__
@@ -126,6 +113,7 @@ class DataCleaner(DataOperator):
     def __init__(self, columns: None):
         super().__init__()
         self.set_default_col(columns)
+        self.__dc_data__ = super().get_data()
     
     # Method to impute the missing values
     def impute(self, method: "median, mode", col: list) -> None:
@@ -147,6 +135,8 @@ class DataCleaner(DataOperator):
             None
         """
         if col is not None:
+            st = time()
+            print("Imputing data with {0} method".format(method))
             method = method.split(",")
             for column in col:
                 if self.__dc_data__[column].dtype == "object":
@@ -157,6 +147,7 @@ class DataCleaner(DataOperator):
                         self.__dc_data[column].fillna(value=self.__dc_data[column].mean(), inplace=True)
                     if method[0] == "median":
                         self.__dc_data__[column].fillna(value=self.__dc_data__[column].median(), inplace=True)
+            print("Imputation Complete in {0:.2f} seconds.".format(time() - st))
             return
         else:
             print("Expected at least 1 column, got None")
@@ -180,8 +171,35 @@ class DataCleaner(DataOperator):
         missing_data = round(self.__dc_data__.isna().sum()/self.__dc_data.shape[0] * 100, 2)
         missing_df = pd.DataFrame(data=missing_data.reset_index())
         missing_df.columns = ["Attribute", "Percentage"]
-        super().push_data_to_db(data=missing_df)
+        super().push_missing_data(data=missing_df)
         return missing_df
+
+    def winsorize(self, method: "IQR", col: list) -> None:
+        method = method.lower()
+        if col is not None:
+            st = time()
+            print("Started winsorization")
+            if method == "iqr":
+                for column in col:
+                    quartile_one, quartile_two, quartile_three = np.percentile(self.__dc_data__[column],  [25, 50, 75])
+                    iqr = quartile_three - quartile_one
+                    pos_out = quartile_three + 1.5 * iqr
+                    neg_out = quartile_one - 1.5 * iqr
+                    self.__dc_data__[self.__dc_data__[column] > pos_out] = quartile_three
+                    self.__dc_data__[self.__dc_data__[column] < neg_out] = quartile_one
+            print("Winsorization complete in {0:.2f} seconds.".format(time() - st))
+            return
+        else:
+            print("Expected at least 1 column, but got None")
+            return
+
+    def drop_columns(self, col: list) -> None:
+        if col is not None:
+            self.__dc_data__.drop(labels=col, axis=1, inplace=True)
+            return
+        else:
+            print("Expected at least 1 column, got None")
+            return
 
     # Getters and setters for the private variables of the class DataCleaner
     def set_default_col(self, col: None) ->  None: self.__default_col__ = col
