@@ -1,7 +1,7 @@
-from datautils import DataCleaner
+# from datautils import DataCleaner
+from operatedb import DbOperator
 
 if __name__ == "__main__":
-    obj = DataCleaner()
-    if obj.get_data_flag():
-        obj.set_dcData(obj.pull_data_from_db(table_name='titanic'))
-        print(obj.get_dcData())
+    obj = DbOperator()
+    obj.create_table(name="test", column=("Attribute", "Percentage"), column_type=("text", "int"))
+    obj.push_to_db(table="test", values=["q"])
