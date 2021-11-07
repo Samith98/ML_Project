@@ -21,7 +21,7 @@ class DbOperator:
         self.__user__ = self.__login__["user"]
         self.__password__ = self.__login__["password"]
 
-    def create_table(self, name: str(), column: list(), column_type: list()) -> None:
+    def create_table(self, name=str(), column=list(), column_type=list()) -> None:
         if bool(name) and bool(column) and bool(column_type):
             try:
                 if len(column) == len(column_type):
@@ -53,11 +53,24 @@ class DbOperator:
         else:
             print("Connection parameters missing. Check the configuration")
 
-    def push_to_db(self, table: str(), data: pd.DataFrame()) -> None:
+    def get_dtype(val=str) -> str():
+        data_dict = {
+                "int64": "int",
+                "int32": "int",
+                "float64": "float",
+                "float32": "float",
+                "object": "text"
+            }
+        return data_dict.get(val)
+
+    def push_to_db(self, table=None, data=None) -> None:
         try:
-            if bool(table) and bool(data):
+            if table is not None and data is not None:
                 columns = data.columns.tolist()
-                col_type = [str(col.dtype) for col in data[columns]]
+                col_type = list()
+                for col in columns:
+                    col_type.append(self.get_dtype(str(data[col].dtype)))
+                #col_type = [self.get_dtype(val=str(data[col].dtype)) for col in columns]
                 self.create_table(name=table, column=columns, column_type=col_type)
                 init_check = "SHOW COLUMNS from {0}.{1}".format(self.__database__, table)
                 con, cur = self.db_connect()
@@ -76,5 +89,23 @@ class DbOperator:
                 con.close()
             else:
                 print("Expected at least 1, got None")
+        except Error as e:
+            print(e)
+
+    def pull_from_db(self, table=str()) -> pd.DataFrame:
+        try:
+            data_dict = dict()
+            sql = "SELECT * FROM {0}".format(table)
+            con, cur = self.db_connect()
+            cur.execute(sql)
+            data = cur.fetchall()
+            data_dict["data"] = data
+            sql2 = "SHOW COLUMNS from {0}.{1}".format(self.__database__, table)
+            cur.execute(sql2)
+            columns = cur.fetchall()
+            columns = [columns[i][0] for i in range(0, len(columns))]
+            data_dict["columns"] = columns
+            data_df = pd.DataFrame(data=data_dict["data"], columns=data_dict["columns"])
+            return data_df
         except Error as e:
             print(e)
