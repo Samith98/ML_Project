@@ -24,6 +24,9 @@
     <Compile Include="datautils.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="operatedb.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="TitanicDataset.py" />
   </ItemGroup>
   <ItemGroup>
